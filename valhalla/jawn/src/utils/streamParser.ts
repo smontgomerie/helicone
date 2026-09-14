@@ -112,8 +112,13 @@ export function consolidateTextFields(responseBody: any[]): any {
   }
 }
 
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 export function recursivelyConsolidate(body: any, delta: any): any {
   Object.keys(delta).forEach((key) => {
+    if (FORBIDDEN_KEYS.has(key)) {
+      return;
+    }
     if (body[key] === undefined || body[key] === null) {
       body[key] = delta[key];
     } else if (typeof body[key] === "object") {
