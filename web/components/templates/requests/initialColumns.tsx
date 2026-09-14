@@ -12,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import CostPill from "./costPill";
+import CostPill, { isKnownFreeModel } from "./costPill";
 import { COUTNRY_CODE_DIRECTORY } from "./countryCodeDirectory";
 import ModelPill from "./modelPill";
 import ProviderPill from "./providerPill";
@@ -246,7 +246,12 @@ export const getInitialColumns = (): ColumnDef<MappedLLMRequest>[] => [
       const isCached =
         info.row.original.heliconeMetadata.cacheReferenceId !== DEFAULT_UUID;
 
-      if (Number(num) === 0 && !isCached && statusCode === 200) {
+      if (
+        Number(num) === 0 &&
+        !isCached &&
+        statusCode === 200 &&
+        !isKnownFreeModel(info.row.original.model)
+      ) {
         return <CostPill />;
       }
       return <span>${formatNumber(num)}</span>;

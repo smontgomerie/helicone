@@ -5,7 +5,9 @@ import StatusBadge from "../../../templates/requests/statusBadge";
 import { formatNumber } from "../../../templates/users/initialColumns";
 import { clsx } from "../../clsx";
 import { useState } from "react";
-import CostPill from "../../../templates/requests/costPill";
+import CostPill, {
+  isKnownFreeModel,
+} from "../../../templates/requests/costPill";
 import { getUSDateFromString } from "../../utils/utils";
 import { MappedLLMRequest } from "@helicone-package/llm-mapper/types";
 
@@ -60,7 +62,9 @@ const RequestRow = (props: RequestRowProps) => {
           <p className="text-xs font-semibold">
             {Number(row.heliconeMetadata.latency) / 1000}s
           </p>
-          {row.heliconeMetadata.cost !== null ? (
+          {row.heliconeMetadata.cost !== null &&
+          (Number(row.heliconeMetadata.cost) !== 0 ||
+            isKnownFreeModel(row.model)) ? (
             <p className="text-xs font-semibold">
               ${formatNumber(row.heliconeMetadata.cost)}
             </p>
