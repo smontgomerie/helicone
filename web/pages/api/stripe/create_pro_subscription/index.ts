@@ -1,38 +1,38 @@
 // /api/start-subscription.js
 
-import { NextApiRequest, NextApiResponse } from "next";
 import Stripe from "stripe";
 import { dbExecute } from "../../../../lib/api/db/dbExecute";
 import { logger } from "@/lib/telemetry/logger";
 import { resultMap } from "@/packages/common/result";
+import {
+  HandlerWrapperOptions,
+  withAuth,
+} from "../../../../lib/api/handlerWrappers";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-02-24.acacia",
 });
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
+type CheckoutResponse = { sessionId: string } | { error: string };
+
+async function handler({
+  req,
+  res,
+  userData,
+}: HandlerWrapperOptions<CheckoutResponse>) {
   if (req.method !== "POST") {
-    return res.status(405).end();
+    res.status(405).json({ error: "Method not allowed" });
+    return;
   }
 
-  // Extract organization and user data
-  const { orgId, userEmail } = req.body;
-
-  if (!orgId) {
-    return res.status(400).json({ error: "Missing organization ID." });
-  }
-  if (!userEmail) {
-    return res.status(400).json({ error: "Missing user email." });
-  }
+  const orgId = userData.orgId;
+  const userEmail = userData.user.email;
 
   try {
     const { data: org, error: orgError } = resultMap(
       await dbExecute<{
         stripe_customer_id: string;
-      }>("SELECT * FROM organization WHERE id = $1", [orgId]),
+      }>("SELECT stripe_customer_id FROM organization WHERE id = $1", [orgId]),
       (d) => d?.[0],
     );
 
@@ -43,7 +43,7 @@ export default async function handler(
         },
         "Unable to find org",
       );
-      res.status(400).send(`Unable to find org: ${orgError}`);
+      res.status(400).json({ error: "Unable to find organization" });
       return;
     }
 
@@ -69,7 +69,7 @@ export default async function handler(
           },
           "Unable to update org",
         );
-        res.status(400).send(`Unable to update org: ${updateError}`);
+        res.status(500).json({ error: "Unable to update organization" });
         return;
       }
     }
@@ -100,6 +100,9 @@ export default async function handler(
     // Respond with the session ID
     res.status(200).json({ sessionId: session.id });
   } catch (e) {
-    res.status(500).json({ error: "Failed to create checkout session." + e });
+    logger.error({ error: e }, "Failed to create checkout session");
+    res.status(500).json({ error: "Failed to create checkout session" });
   }
 }
+
+export default withAuth(handler);

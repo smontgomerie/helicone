@@ -5,6 +5,16 @@ import { resultMap } from "@/packages/common/result";
 import { dbQueryClickhouse } from "../db/dbExecute";
 import { COST_PRECISION_MULTIPLIER } from "@helicone-package/cost/costCalc";
 
+const DEFAULT_LIMIT = 100;
+const MAX_LIMIT = 1000;
+
+export function safeLimit(raw: unknown): number {
+  const value = typeof raw === "string" ? Number(raw.trim()) : Number(raw);
+  if (typeof raw === "object" && raw !== null) return DEFAULT_LIMIT;
+  if (!Number.isInteger(value) || value < 1) return DEFAULT_LIMIT;
+  return Math.min(value, MAX_LIMIT);
+}
+
 export async function getAggregatedKeyMetrics(
   filter: FilterNode,
   timeFilter: {
@@ -63,7 +73,7 @@ export async function getAggregatedKeyMetrics(
   )
   GROUP BY value
   ${orderByClause}
-  LIMIT ${limit}
+  LIMIT ${safeLimit(limit)}
 `;
 
   const res = await dbQueryClickhouse<{
