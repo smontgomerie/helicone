@@ -19,6 +19,8 @@ import { models as gpt54MiniModels } from "./gpt-5.4-mini/models";
 import { models as gpt55Models } from "./gpt-5.5/models";
 import { models as ossModels } from "./oss/models";
 import { models as gptImage1Models } from "./gpt-image-1/models";
+import { models as gptImage2Models } from "./gpt-image-2/models";
+import { models as gptImage25Models } from "./gpt-image-2.5/models";
 
 // Import endpoints
 import { endpoints as gpt4oEndpoints } from "./gpt-4o/endpoints";
@@ -34,6 +36,8 @@ import { endpoints as gpt54MiniEndpoints } from "./gpt-5.4-mini/endpoints";
 import { endpoints as gpt55Endpoints } from "./gpt-5.5/endpoints";
 import { endpoints as ossEndpoints } from "./oss/endpoints";
 import { endpoints as gptImage1Endpoints } from "./gpt-image-1/endpoints";
+import { endpoints as gptImage2Endpoints } from "./gpt-image-2/endpoints";
+import { endpoints as gptImage25Endpoints } from "./gpt-image-2.5/endpoints";
 
 // Aggregate models
 export const openaiModels = {
@@ -50,6 +54,8 @@ export const openaiModels = {
   ...gpt55Models,
   ...ossModels,
   ...gptImage1Models,
+  ...gptImage2Models,
+  ...gptImage25Models,
 } satisfies Record<string, ModelConfig>;
 
 // Aggregate endpoints
@@ -67,4 +73,6 @@ export const openaiEndpointConfig = {
   ...gpt55Endpoints,
   ...ossEndpoints,
   ...gptImage1Endpoints,
+  ...gptImage2Endpoints,
+  ...gptImage25Endpoints,
 } satisfies Record<string, ModelProviderConfig>;
