@@ -1,0 +1,9 @@
+{
+  "baseUrl": "http://127.0.0.1:9876",
+  "consumerId": "captain-<yourname>",
+  "displayName": "<Yourname> (captain)",
+  "originLabel": "Cursor",
+  "workqRoot": "/absolute/path/to/workq",
+  "poolHome": "~/.workq-pool",
+  "secretFile": "workq.secret.json"
+}
