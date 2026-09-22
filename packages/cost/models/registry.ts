@@ -21,6 +21,7 @@ import { ModelName, ModelProviderConfigId } from "./registry-types";
 // Import all models and endpoints from authors
 import { anthropicModels, anthropicEndpointConfig } from "./authors/anthropic";
 import { openaiModels, openaiEndpointConfig } from "./authors/openai";
+import { nvidiaModels, nvidiaEndpointConfig } from "./authors/nvidia";
 import { googleModels, googleEndpointConfig } from "./authors/google";
 import { grokModels, grokEndpointConfig } from "./authors/xai";
 import { metaModels, metaEndpointConfig } from "./authors/meta";
@@ -42,6 +43,7 @@ import {
 const allModels = {
   ...anthropicModels,
   ...openaiModels,
+  ...nvidiaModels,
   ...googleModels,
   ...grokModels,
   ...metaModels,
@@ -58,6 +60,7 @@ const allModels = {
 const modelProviderConfigs = {
   ...anthropicEndpointConfig,
   ...openaiEndpointConfig,
+  ...nvidiaEndpointConfig,
   ...googleEndpointConfig,
   ...grokEndpointConfig,
   ...metaEndpointConfig,

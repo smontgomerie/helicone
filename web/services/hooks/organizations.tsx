@@ -326,6 +326,7 @@ const useOrgsContextManager = (): OrgContextValue => {
     {},
     {
       enabled:
+        !!user?.id &&
         ((demoOrg?.has_onboarded as any)?.demoDataSetup ?? false) === false,
       refetchOnWindowFocus: false,
       retry: false,
