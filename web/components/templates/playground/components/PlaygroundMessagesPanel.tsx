@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Tool } from "@helicone-package/llm-mapper/types";
 import { ModelParameters } from "@/lib/api/llm/generate";
 import { ResponseFormat } from "../types";
+import { safeRandomUUID } from "@/lib/random";
 
 interface PlaygroundMessagesPanelProps {
   mappedContent: MappedLLMRequest | null;
@@ -79,7 +80,7 @@ const PlaygroundMessagesPanel = ({
 
     const messagesWithIds = messages.map((message: Message, index: number) => ({
       ...message,
-      id: message.id || globalThis.crypto.randomUUID(),
+      id: message.id || safeRandomUUID(),
     }));
 
     setMappedContent({

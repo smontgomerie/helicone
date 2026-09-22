@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { clsx } from "../../shared/clsx";
 import { Message } from "@helicone-package/llm-mapper/types";
+import { safeRandomUUID } from "@/lib/random";
 
 interface ChatInputAreaProps {
   currentChat: Message[];
@@ -34,7 +35,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
             setCurrentChat([
               ...currentChat,
               {
-                id: crypto.randomUUID(),
+                id: safeRandomUUID(),
                 role: "user",
                 content: "",
                 _type: "message",
@@ -56,7 +57,7 @@ const ChatInputArea: React.FC<ChatInputAreaProps> = ({
           onClick={() => {
             const originalCopy = currentChat.map((message) => ({
               ...message,
-              id: crypto.randomUUID(),
+              id: safeRandomUUID(),
             }));
             setCurrentChat(originalCopy);
           }}

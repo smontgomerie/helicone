@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { safeRandomUUID } from "@/lib/random";
 import { logger } from "@/lib/telemetry/logger";
 import { useRequestRenderModeStore } from "@/store/requestRenderModeStore";
 import { useSortable } from "@dnd-kit/sortable";
@@ -556,7 +557,7 @@ export default function ChatMessage({
                     role: newRole,
                     _type: "function",
                     name: "new_function",
-                    tool_call_id: `call_${crypto.randomUUID()}`,
+                    tool_call_id: `call_${safeRandomUUID()}`,
                     content: "{}",
                   };
                 }

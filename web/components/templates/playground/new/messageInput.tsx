@@ -1,6 +1,7 @@
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { ChangeEvent, useState } from "react";
 import { clsx } from "../../../shared/clsx";
+import { safeRandomUUID } from "@/lib/random";
 
 import useNotification from "../../../shared/notification/useNotification";
 import ResizeTextArea from "../resizeTextArea";
@@ -31,7 +32,7 @@ interface MessageInputProps {
 }
 
 const EMPTY_MESSAGE: MessageInputItem = {
-  id: crypto.randomUUID(),
+  id: safeRandomUUID(),
   role: "user",
   content: "",
 };
