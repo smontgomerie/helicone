@@ -275,6 +275,13 @@ export class RequestWrapper {
   }
 
   async getJson<T>(): Promise<T> {
+    // Multipart bodies (e.g. images/edits) are raw binary streams, not JSON.
+    // Guard here (rather than at every call site, e.g. getUserId) so all
+    // JSON consumers get an empty object instead of a 500 "Failed to parse JSON".
+    const contentType = this.headers.get("content-type") ?? "";
+    if (contentType.includes("multipart/form-data")) {
+      return {} as T;
+    }
     try {
       const text = await this.getText();
       return JSON.parse(text);

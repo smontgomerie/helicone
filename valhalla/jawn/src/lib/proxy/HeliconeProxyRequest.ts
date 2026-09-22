@@ -196,6 +196,12 @@ export class HeliconeProxyRequestMapper {
   }
 
   async requestJson(): Promise<HeliconeProxyRequest["requestJson"]> {
+    // Multipart bodies (e.g. images/edits) are raw binary streams, not JSON.
+    // Parsing them throws and 500s the proxy; skip JSON parsing for them.
+    const contentType = this.request.getHeaders().get("content-type") ?? "";
+    if (contentType.includes("multipart/form-data")) {
+      return {};
+    }
     return this.request.getMethod() === "POST"
       ? await this.request.getJson()
       : {};
