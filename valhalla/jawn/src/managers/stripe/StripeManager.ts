@@ -96,13 +96,24 @@ const COST_OF_EXPERIMENTS = 50;
 const EARLY_ADOPTER_COUPON = "9ca5IeEs"; // WlDg28Kf | prod: 9ca5IeEs
 
 export class StripeManager extends BaseManager {
-  private stripe: Stripe;
+  private stripe?: Stripe;
 
   constructor(authParams: AuthParams) {
     super(authParams);
-    this.stripe = new Stripe(SecretManager.getSecret("STRIPE_SECRET_KEY")!, {
-      apiVersion: "2025-02-24.acacia",
-    });
+    const stripeSecret = SecretManager.getSecret("STRIPE_SECRET_KEY");
+    if (stripeSecret) {
+      this.stripe = new Stripe(stripeSecret, {
+        apiVersion: "2025-02-24.acacia",
+      });
+    }
+  }
+
+  private getStripeClient(): Result<Stripe, string> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
+
+    return ok(this.stripe);
   }
 
   public async getCostForPrompts(): Promise<Result<number, string>> {
@@ -139,9 +150,14 @@ export class StripeManager extends BaseManager {
     events: StripeMeterEvent[]
   ): Promise<Result<string, string>> {
     try {
+      const stripeResult = this.getStripeClient();
+      if (stripeResult.error) {
+        return err(stripeResult.error);
+      }
+
       // First create a meter event session to get an auth token
       const meterEventSession =
-        await this.stripe.v2.billing.meterEventSession.create();
+        await stripeResult.data.v2.billing.meterEventSession.create();
       await sendMeteredBatch(events, meterEventSession.authentication_token);
 
       return ok("Success");
@@ -1420,6 +1436,11 @@ WHERE (${builtFilter.filter})`,
 
   public async getSubscription(): Promise<Result<Stripe.Subscription, string>> {
     try {
+      const stripeResult = this.getStripeClient();
+      if (stripeResult.error) {
+        return err(stripeResult.error);
+      }
+
       const organization = await this.getOrganization();
 
       if (organization.error) {
@@ -1430,7 +1451,7 @@ WHERE (${builtFilter.filter})`,
         return err("No subscription found for this organization");
       }
 
-      const subscription = await this.stripe.subscriptions.retrieve(
+      const subscription = await stripeResult.data.subscriptions.retrieve(
         organization.data.stripe_subscription_id,
         {
           expand: ["items.data.price.product"],
