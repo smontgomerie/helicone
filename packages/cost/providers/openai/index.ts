@@ -931,6 +931,28 @@ const baseCosts: ModelRow[] = [
       prompt_cache_read_token: 0.000000175,
     },
   },
+  {
+    model: {
+      operator: "startsWith",
+      value: "gpt-5.4-mini",
+    },
+    cost: {
+      prompt_token: 0.00000075,
+      completion_token: 0.0000045,
+      prompt_cache_read_token: 0.000000075,
+    },
+  },
+  {
+    model: {
+      operator: "startsWith",
+      value: "gpt-5.5",
+    },
+    cost: {
+      prompt_token: 0.000005,
+      completion_token: 0.00003,
+      prompt_cache_read_token: 0.0000005,
+    },
+  },
 ];
 
 // OpenAI Batch API is 50% cheaper than the regular API

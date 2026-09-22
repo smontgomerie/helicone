@@ -28,11 +28,11 @@ docker compose up
 ```
 
 NOTE: To create a user go to http://localhost:54323/project/default/auth/users and add your account.
-You can use this account to sign into Helicone at localhost:3000 via your browser.
+You can use this account to sign into Helicone at http://localhost:3901 via your browser.
 
 **Default URLs (Development):**
 
-- Helicone Webpage: localhost:3000
+- Helicone Webpage: localhost:3901
 - Helicone Jawn API/Proxy: localhost:8585
 - OpenAI Proxy Worker: localhost:8787 (when running workers separately)
 - Helicone API Worker: localhost:8788 (when running workers separately)
@@ -140,7 +140,7 @@ yarn && yarn dev:local
 
 ## Step 4 - Verification
 
-You can login to Helicone at `http://localhost:3000`
+You can login to Helicone at `http://localhost:3901`
 with the following credentials:
 
 User: `test@helicone.ai`
