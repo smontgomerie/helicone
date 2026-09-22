@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ChatWindow } from "./chatWindow";
+import { safeRandomUUID } from "@/lib/random";
 
 const FAMOUS_MOVIES = [
   {
@@ -69,7 +70,7 @@ const GuessWhoGame = () => {
     setSelectedMovie(randomMovie);
     setSelectedCharacter(randomCharacter);
     setGameState("playing");
-    setGameSessionId(crypto.randomUUID());
+    setGameSessionId(safeRandomUUID());
     setChatHistory([
       {
         role: "assistant",

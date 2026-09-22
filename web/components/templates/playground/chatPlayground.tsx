@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { safeRandomUUID } from "@/lib/random";
 
 // Extend the Message type to include model and latency
 type ExtendedMessage = Message & {
@@ -225,7 +226,7 @@ const ChatPlayground = (props: ChatPlaygroundProps) => {
 
       if (data) {
         history.push({
-          id: crypto.randomUUID(),
+          id: safeRandomUUID(),
           content: getContent(data),
           role: getRole(data),
           model: model.name,
@@ -534,7 +535,7 @@ const ChatPlayground = (props: ChatPlaygroundProps) => {
                 if (lastMessage === undefined) {
                   const newChat = [...currentChat];
                   newChat.push({
-                    id: crypto.randomUUID(),
+                    id: safeRandomUUID(),
                     content: "",
                     role: "user",
                     _type: "message",
@@ -543,7 +544,7 @@ const ChatPlayground = (props: ChatPlaygroundProps) => {
                 } else if (lastMessage.role === "user") {
                   const newChat = [...currentChat];
                   newChat.push({
-                    id: crypto.randomUUID(),
+                    id: safeRandomUUID(),
                     content: "",
                     role: "assistant",
                     _type: "message",
@@ -552,7 +553,7 @@ const ChatPlayground = (props: ChatPlaygroundProps) => {
                 } else {
                   const newChat = [...currentChat];
                   newChat.push({
-                    id: crypto.randomUUID(),
+                    id: safeRandomUUID(),
                     content: "",
                     role: "user",
                     _type: "message",
@@ -593,7 +594,7 @@ const ChatPlayground = (props: ChatPlaygroundProps) => {
               onClick={() => {
                 const originalCopy = chat.map((message) => ({
                   ...message,
-                  id: crypto.randomUUID(),
+                  id: safeRandomUUID(),
                 }));
                 setCurrentChat(originalCopy);
               }}
