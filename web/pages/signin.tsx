@@ -15,6 +15,7 @@ import Image from "next/image";
 
 const SignIn = ({
   customerPortal,
+  selfHosted,
 }: {
   customerPortal?: Result<
     {
@@ -23,6 +24,7 @@ const SignIn = ({
     },
     string
   >;
+  selfHosted?: boolean;
 }) => {
   const heliconeAuthClient = useHeliconeAuthClient();
   const router = useRouter();
@@ -32,7 +34,7 @@ const SignIn = ({
   const { unauthorized } = router.query;
   const [refreshed, setRefreshed] = useState(false);
   const [redirectCount, setRedirectCount] = useState(0);
-  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignIn, setShowSignIn] = useState(Boolean(selfHosted));
 
   useEffect(() => {
     // Prevent infinite loops by limiting redirects
@@ -217,7 +219,9 @@ export const getServerSideProps = async (
 ) => {
   if (env("NEXT_PUBLIC_IS_ON_PREM") === "true") {
     return {
-      props: {},
+      props: {
+        selfHosted: true,
+      },
     };
   }
 
@@ -227,7 +231,9 @@ export const getServerSideProps = async (
     context.req.headers.host?.includes("vercel")
   ) {
     return {
-      props: {},
+      props: {
+        selfHosted: context.req.headers.host?.includes("localhost") ?? false,
+      },
     };
   }
 
@@ -237,7 +243,9 @@ export const getServerSideProps = async (
     context.req.headers.host?.includes("eu")
   ) {
     return {
-      props: {},
+      props: {
+        selfHosted: false,
+      },
     };
   }
 
