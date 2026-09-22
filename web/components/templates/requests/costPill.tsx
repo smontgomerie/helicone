@@ -19,4 +19,7 @@ const CostPill = () => {
   );
 };
 
+export const isKnownFreeModel = (model: string): boolean =>
+  model.toLowerCase().endsWith(":free");
+
 export default CostPill;

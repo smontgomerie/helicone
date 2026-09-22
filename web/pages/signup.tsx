@@ -1,11 +1,33 @@
+import { InboxArrowDownIcon } from "@heroicons/react/24/outline";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import useNotification from "../components/shared/notification/useNotification";
+import ThemedModal from "../components/shared/themed/themedModal";
+import AuthForm from "../components/templates/auth/authForm";
+import { DEMO_EMAIL } from "../lib/constants";
 import PublicMetaData from "../components/layout/public/publicMetaData";
+import { useHeliconeAuthClient } from "@/packages/common/auth/client/AuthClientFactory";
+import { logger } from "@/lib/telemetry/logger";
 import { GetServerSidePropsContext } from "next";
 import { env } from "next-runtime-env";
-import Link from "next/link";
-import Image from "next/image";
-import { AuthBrandingPanel } from "../components/templates/auth/AuthBrandingPanel";
 
 const SignUp = () => {
+  const heliconeAuthClient = useHeliconeAuthClient();
+  const { setNotification } = useNotification();
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (
+      heliconeAuthClient.user &&
+      heliconeAuthClient.user.id &&
+      heliconeAuthClient.user.email &&
+      heliconeAuthClient.user.email !== DEMO_EMAIL
+    ) {
+      router.push("/welcome");
+    }
+  }, [heliconeAuthClient.user, router]);
+
   return (
     <PublicMetaData
       description={
@@ -13,40 +35,83 @@ const SignUp = () => {
       }
       ogImageUrl={"https://www.helicone.ai/static/helicone-og.webp"}
     >
-      <div className="flex h-screen w-full">
-        <AuthBrandingPanel />
+      <AuthForm
+        handleEmailSubmit={async (email: string, password: string) => {
+          const origin = window.location.origin;
+          logger.info({ email, origin }, "User signing up with email");
 
-        <div className="flex w-full flex-col items-center justify-center bg-white p-6 md:w-1/2 md:p-12">
-          <div className="w-full max-w-md">
-            <div className="mb-8 flex justify-center md:hidden">
-              <Link href="https://www.helicone.ai/" className="flex">
-                <Image
-                  src={"/static/logo.svg"}
-                  alt="Helicone"
-                  height={80}
-                  width={80}
-                  priority={true}
-                />
-              </Link>
-            </div>
+          const { error } = await heliconeAuthClient.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${origin}/onboarding`,
+            },
+          });
 
-            <div className="flex flex-col items-center text-center gap-4">
-              <h2 className="text-2xl font-semibold text-gray-900">
-                Sign ups are disabled
-              </h2>
-              <p className="text-sm text-gray-600">
-                Already have an account?{" "}
-                <Link
-                  href={"/signin"}
-                  className="text-sky-500 hover:text-sky-700"
-                >
-                  Sign in here.
-                </Link>
-              </p>
-            </div>
+          if (error) {
+            setNotification(
+              "Error creating your account. Please try again.",
+              "error",
+            );
+            logger.error({ error, email }, "Email sign up failed");
+            return;
+          }
+
+          setShowEmailConfirmation(true);
+        }}
+        handleGoogleSubmit={async () => {
+          const origin = window.location.origin;
+          const { error } = await heliconeAuthClient.signInWithOAuth({
+            provider: "google",
+            options: {
+              redirectTo: `${origin}/onboarding`,
+            },
+          });
+          if (error) {
+            setNotification(
+              "Error creating your account. Please try again.",
+              "error",
+            );
+            logger.error({ error }, "Google OAuth sign up failed");
+            return;
+          }
+        }}
+        handleGithubSubmit={async () => {
+          const origin = window.location.origin;
+          const { error } = await heliconeAuthClient.signInWithOAuth({
+            provider: "github",
+            options: {
+              redirectTo: `${origin}/onboarding`,
+            },
+          });
+          if (error) {
+            setNotification(
+              "Error creating your account. Please try again.",
+              "error",
+            );
+            logger.error({ error }, "GitHub OAuth sign up failed");
+            return;
+          }
+        }}
+        showSSOButton={true}
+        authFormType={"signup"}
+      />
+      <ThemedModal
+        open={showEmailConfirmation}
+        setOpen={setShowEmailConfirmation}
+      >
+        <div className="flex w-full min-w-[300px] flex-col items-center justify-center space-y-4 p-2 text-center">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Confirm your email
+          </h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Please check your email for a confirmation link.
+          </p>
+          <div className="pt-4">
+            <InboxArrowDownIcon className="h-16 w-16 text-gray-700" />
           </div>
         </div>
-      </div>
+      </ThemedModal>
     </PublicMetaData>
   );
 };
@@ -62,7 +127,6 @@ export const getServerSideProps = async (
     };
   }
 
-  // if the base path contains localhost or vercel, do nothing
   if (
     context.req.headers.host?.includes("localhost") ||
     context.req.headers.host?.includes("vercel")
@@ -72,7 +136,6 @@ export const getServerSideProps = async (
     };
   }
 
-  // if the base path contains us or eu in the basepath, do nothing
   if (
     context.req.headers.host?.includes("us") ||
     context.req.headers.host?.includes("eu")
@@ -82,7 +145,6 @@ export const getServerSideProps = async (
     };
   }
 
-  // default to the configured app URL signin if no other conditions are met
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.NODE_ENV === "development"

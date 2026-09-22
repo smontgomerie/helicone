@@ -169,6 +169,15 @@ export class ResponseBodyHandler extends AbstractLogHandler {
         context.legacyUsage.cost = cost;
       }
 
+      // Passthrough requests use the OpenAI-compatible route, so infer OpenRouter
+      // from the actual upstream URL when gateway metadata is unavailable.
+      if (
+        !context.message.heliconeMeta.gatewayProvider &&
+        context.message.log.request.targetUrl.includes("openrouter.ai")
+      ) {
+        context.message.heliconeMeta.gatewayProvider = "openrouter";
+      }
+
       // Parse structured usage via the registry-aware processors when available
       const gatewayProvider = context.message.heliconeMeta.gatewayProvider;
       const provider =
