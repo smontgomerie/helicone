@@ -229,7 +229,18 @@ export class RequestWrapper {
     if (this.cachedText) {
       return this.cachedText;
     }
-    this.cachedText = JSON.stringify(this.request.body);
+    const body = this.request.body;
+    if (Buffer.isBuffer(body)) {
+      // Raw/binary body (body-parser.raw, e.g. multipart/form-data image edits).
+      // Preserve the original bytes 1:1 via latin1 instead of
+      // JSON.stringify(Buffer) — which yields {"type":"Buffer","data":[…]} —
+      // or a UTF-8 decode, which mangles bytes above 0x7f. latin1 maps each
+      // byte to the same char code, so Buffer.from(text, "latin1") recovers
+      // the exact original bytes end-to-end.
+      this.cachedText = body.toString("latin1");
+      return this.cachedText;
+    }
+    this.cachedText = JSON.stringify(body);
     return this.cachedText;
   }
 
