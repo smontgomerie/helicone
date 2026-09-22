@@ -1,0 +1,68 @@
+{
+  "quality": {
+    "requiredGates": [
+      {
+        "id": "typecheck",
+        "label": "Typecheck"
+      },
+      {
+        "id": "lint",
+        "label": "Lint & format"
+      },
+      {
+        "id": "unit",
+        "label": "Unit tests"
+      },
+      {
+        "id": "build",
+        "label": "Build"
+      }
+    ],
+    "requirePullRequest": true,
+    "defaultBaseBranch": "main",
+    "requireSelfReview": true
+  },
+  "testing": {
+    "gateCommands": [
+      {
+        "gateId": "typecheck",
+        "command": "yarn --cwd valhalla/jawn tsc --noEmit",
+        "description": "Typecheck (from CI/build command observed: npm run typecheck)"
+      },
+      {
+        "gateId": "lint",
+        "command": "yarn lint",
+        "description": "Lint & format (from package.json script \"lint\")"
+      },
+      {
+        "gateId": "unit",
+        "command": "yarn --cwd packages jest __tests__/",
+        "description": "Unit tests (from CI/build command observed: npm test --silent)"
+      },
+      {
+        "gateId": "build",
+        "command": "yarn build:web",
+        "description": "Build (from package.json script \"build:web\")"
+      }
+    ],
+    "e2eStrategy": "none",
+    "evidenceTier": "integration",
+    "evidenceRecording": false
+  },
+  "integrations": {
+    "github": {
+      "provider": "pool"
+    }
+  },
+  "onboard": {
+    "setupCommands": [
+      "yarn install --frozen-lockfile"
+    ],
+    "forge": "github",
+    "capabilities": {
+      "CodeReview": "github",
+      "Ci": "github"
+    },
+    "purpose": "Helicone monorepo: Next.js dashboard (web), Express API (valhalla/jawn), Cloudflare workers, AI gateway, and shared packages \u2014 LLM observability and gateway."
+  }
+}
