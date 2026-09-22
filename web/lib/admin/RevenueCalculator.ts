@@ -4,6 +4,7 @@ import {
   getProductIdsFromUpcomingInvoice,
   calculateInvoiceAmounts,
 } from "./calculatorUtil";
+import { safeRandomUUID } from "@/lib/random";
 
 export interface RawStripeData {
   invoices: Stripe.Invoice[];
@@ -112,7 +113,7 @@ export class RevenueCalculator {
           const key =
             typeof invoice.subscription === "string"
               ? invoice.subscription
-              : (invoice.subscription as any)?.id || crypto.randomUUID();
+              : (invoice.subscription as any)?.id || safeRandomUUID();
           uniqueUpcomingInvoices.set(key, invoice);
         });
       });

@@ -39,6 +39,7 @@ import {
 import { useHeliconeAgent } from "../agent/HeliconeAgentContext";
 import { useTheme } from "next-themes";
 import { FeatureWaitlist } from "@/components/templates/waitlist/FeatureWaitlist";
+import { safeRandomUUID } from "@/lib/random";
 
 // Tab system types
 export interface QueryTab {
@@ -55,7 +56,7 @@ const DEFAULT_SQL = "select * from request_response_rmt";
 const HQL_TABS_KEY = "hql-tabs";
 
 function generateTabId(): string {
-  return crypto.randomUUID();
+  return safeRandomUUID();
 }
 
 function getInitialTabs(): QueryTab[] {

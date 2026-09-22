@@ -113,16 +113,16 @@ var rawBodySaver = function (req: any, res: any, buf: any, encoding: any) {
   }
 };
 
-app.use(bodyParser.json({ verify: rawBodySaver, limit: "10mb" }));
+app.use(bodyParser.json({ verify: rawBodySaver, limit: "50mb" }));
 app.use(
   bodyParser.urlencoded({
     verify: rawBodySaver,
     extended: true,
-    limit: "10mb",
+    limit: "50mb",
     parameterLimit: 1000,
   })
 );
-app.use(bodyParser.raw({ verify: rawBodySaver, type: "*/*", limit: "10mb" }));
+app.use(bodyParser.raw({ verify: rawBodySaver, type: "*/*", limit: "50mb" }));
 
 const SQS_ENABLED = SecretManager.getSecret("SQS_ENABLED") === "true";
 

@@ -13,6 +13,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { Course, CourseParams, CourseQuiz, CourseSection } from "./types";
 import { logger } from "@/lib/telemetry/logger";
+import { safeRandomUUID } from "@/lib/random";
 
 type CourseParts =
   | "overview"
@@ -47,7 +48,7 @@ export const CourseGenerator: React.FC = () => {
     setIsGenerating(true);
     setShowTextbook(true);
     setCourse({});
-    const sessionId = crypto.randomUUID();
+    const sessionId = safeRandomUUID();
     setSessionId(sessionId);
 
     try {

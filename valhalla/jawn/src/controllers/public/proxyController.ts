@@ -11,7 +11,7 @@ import { RequestWrapper } from "../../lib/requestWrapper/requestWrapper";
 import { Provider } from "@helicone-package/llm-mapper/types";
 
 export const proxyRouter = express.Router();
-proxyRouter.use(express.json());
+proxyRouter.use(express.json({ limit: "50mb" }));
 
 export interface ProxyRequestBody {
   url: string;
@@ -125,6 +125,10 @@ const handleOpenAIProxy = async (requestWrapper: RequestWrapper) => {
   return await proxyForwarder(requestWrapper, "OPENAI");
 };
 
+const handleOpenRouterProxy = async (requestWrapper: RequestWrapper) => {
+  return await proxyForwarder(requestWrapper, "OPENROUTER");
+};
+
 const handleGatewayAPIRouter = async (requestWrapper: RequestWrapper) => {
   return new Response("Not implemented", { status: 501 });
 };
@@ -133,6 +137,7 @@ const ROUTER_MAP: {
   [key: string]: (requestWrapper: RequestWrapper) => Promise<Response>;
 } = {
   OAI: handleOpenAIProxy,
+  OPENROUTER: handleOpenRouterProxy,
   GATEWAY: handleGatewayAPIRouter,
   ANTHROPIC: handleAnthropicProxy,
 };

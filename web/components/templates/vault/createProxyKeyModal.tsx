@@ -7,6 +7,7 @@ import {
 import { FormEvent, useEffect, useState } from "react";
 import { Database } from "../../../db/database.types";
 import { Result } from "@/packages/common/result";
+import { safeRandomUUID } from "@/lib/random";
 import {
   DecryptedProviderKey,
   DecryptedProviderKeyMapping,
@@ -169,7 +170,7 @@ const LimitsInput = (props: {
                 cost: limit.cost,
                 count: limit.count,
                 timewindow_seconds: limit.timewindow_seconds,
-                id: crypto.randomUUID(),
+                id: safeRandomUUID(),
                 helicone_proxy_key: "null",
                 currency: limit.cost ? "USD" : undefined,
               })),
@@ -184,7 +185,7 @@ const LimitsInput = (props: {
                 cost: limit.cost,
                 count: limit.count,
                 timewindow_seconds: limit.timewindow_seconds,
-                id: crypto.randomUUID(),
+                id: safeRandomUUID(),
                 helicone_proxy_key: "null",
                 currency: limit.cost ? "USD" : undefined,
               })),
