@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import generateApiKey from "generate-api-key";
 import { Database } from "../../../db/database.types";
 import { dbExecute } from "../../../lib/api/db/dbExecute";
@@ -12,6 +11,7 @@ import {
   HeliconeProxyKeys,
 } from "../../../services/lib/keys";
 import { logger } from "@/lib/telemetry/logger";
+import { safeRandomUUID } from "@/lib/random";
 
 type HashedPasswordRow = {
   hashed_password: string;
@@ -60,7 +60,7 @@ async function handler({
   }
 
   // Generate a new proxy key
-  const proxyKeyId = crypto.randomUUID();
+  const proxyKeyId = safeRandomUUID();
   const proxyKey = `sk-helicone-proxy-${generateApiKey({
     method: "base32",
     dashes: true,
@@ -125,7 +125,7 @@ async function handler({
       await dbExecute(
         `INSERT INTO helicone_proxy_key_limits (id, helicone_proxy_key, timewindow_seconds, count, cost, currency) VALUES ($1, $2, $3, $4, $5, $6)`,
         [
-          crypto.randomUUID(),
+          safeRandomUUID(),
           proxyKeyId,
           limit.timewindow_seconds,
           limit.count,

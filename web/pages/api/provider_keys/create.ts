@@ -1,5 +1,4 @@
 import { dbExecute } from "@/lib/api/db/dbExecute";
-import crypto from "crypto";
 import {
   HandlerWrapperOptions,
   withAuth,
@@ -8,6 +7,7 @@ import { Result } from "@/packages/common/result";
 import { DecryptedProviderKey } from "../../../services/lib/keys";
 import { Permission } from "../../../services/lib/user";
 import { logger } from "@/lib/telemetry/logger";
+import { safeRandomUUID } from "@/lib/random";
 
 async function handler({
   req,
@@ -39,7 +39,7 @@ async function handler({
     return;
   }
 
-  const keyId = crypto.randomUUID();
+  const keyId = safeRandomUUID();
 
   const { error } = await dbExecute(
     `INSERT INTO provider_keys (id, org_id, provider_name, provider_key_name, provider_key) VALUES ($1, $2, $3, $4, $5)`,

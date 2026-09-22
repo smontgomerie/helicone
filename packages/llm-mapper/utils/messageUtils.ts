@@ -1,5 +1,6 @@
 import { Message } from "../types";
 import { LlmSchema } from "../types";
+import { safeRandomUUID } from "./uuid";
 
 function removeLeadingWhitespace(str: string | null): string {
   if (typeof str !== "string") return "";
@@ -53,7 +54,7 @@ export function getRequestMessages(
   ) {
     messages = [
       {
-        id: crypto.randomUUID(),
+        id: safeRandomUUID(),
         role: "system",
         content: requestBody?.system,
       },
@@ -73,14 +74,14 @@ export function getResponseMessage(
       // Handle Anthropic (Claude) response
       if (Array.isArray(responseBody?.content)) {
         return {
-          id: responseBody.id || crypto.randomUUID(),
+          id: responseBody.id || safeRandomUUID(),
           role: "assistant",
           content: responseBody.content,
           _type: "message",
         };
       }
       return {
-        id: responseBody.id || crypto.randomUUID(),
+        id: responseBody.id || safeRandomUUID(),
         role: "assistant",
         content: responseBody?.content?.[0]?.text ?? "",
         _type: "message",
@@ -93,7 +94,7 @@ export function getResponseMessage(
       const choice = responseBody.choices?.[0];
       if (choice) {
         return {
-          id: responseBody.id || crypto.randomUUID(),
+          id: responseBody.id || safeRandomUUID(),
           role: "assistant",
           content: choice.delta?.content ?? "",
           tool_calls: choice.delta?.function_call || choice.delta?.tool_calls,
@@ -109,7 +110,7 @@ export function getResponseMessage(
       if (openAIMessage) {
         return {
           ...openAIMessage,
-          id: openAIMessage.id || crypto.randomUUID(),
+          id: openAIMessage.id || safeRandomUUID(),
           model: model,
         };
       }
