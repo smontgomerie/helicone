@@ -158,7 +158,7 @@ services:
       S3_SECRET_KEY: minioadmin
       S3_BUCKET_NAME: "request-response-storage"
       S3_PROMPT_BUCKET_NAME: "prompt-body-storage"
-      S3_ENDPOINT_PUBLIC: http://localhost:9000
+      S3_ENDPOINT_PUBLIC: ${S3_ENDPOINT_PUBLIC:-http://localhost:9000}
       CLICKHOUSE_CREDS: |
         {
           "CLICKHOUSE_HOST": "http://clickhouse:8123",
@@ -241,7 +241,7 @@ services:
       S3_SECRET_KEY: minioadmin
       S3_BUCKET_NAME: "request-response-storage"
       S3_PROMPT_BUCKET_NAME: "prompt-body-storage"
-      S3_ENDPOINT_PUBLIC: http://localhost:9000
+      S3_ENDPOINT_PUBLIC: ${S3_ENDPOINT_PUBLIC:-http://localhost:9000}
       CLICKHOUSE_CREDS: |
         {
           "CLICKHOUSE_HOST": "http://clickhouse:8123",

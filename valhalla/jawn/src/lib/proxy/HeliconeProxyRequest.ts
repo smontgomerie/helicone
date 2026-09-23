@@ -30,6 +30,7 @@ export interface HeliconeProxyRequest {
 
   requestJson: { stream?: boolean; user?: string } | Record<string, never>;
   bodyText: string | null;
+  rawBody?: Buffer;
 
   heliconeErrors: string[];
   providerAuthHash?: string;
@@ -115,7 +116,7 @@ export class HeliconeProxyRequestMapper {
         heliconeErrors: this.heliconeErrors,
         api_base,
         isStream: isStream,
-        bodyText: await this.getBody(),
+        ...(await this.getBodyParts()),
         startTime,
         url: this.request.url,
         requestId:
@@ -132,12 +133,19 @@ export class HeliconeProxyRequestMapper {
     };
   }
 
-  private async getBody(): Promise<string | null> {
+  private async getBodyParts(): Promise<{
+    bodyText: string | null;
+    rawBody?: Buffer;
+  }> {
     if (this.request.getMethod() === "GET") {
-      return null;
+      return { bodyText: null };
     }
-
-    return await this.request.getText();
+    const text = await this.request.getText();
+    // Forward binary bodies (e.g. multipart image edits) as the original
+    // Buffer so the outbound fetch does not re-encode the text.
+    const body = this.request.getRawBody();
+    const rawBody = Buffer.isBuffer(body) ? body : undefined;
+    return { bodyText: text, rawBody };
   }
 
   private validateApiConfiguration(api_base: string | undefined): boolean {

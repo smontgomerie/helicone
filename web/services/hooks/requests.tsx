@@ -6,6 +6,13 @@ import { $JAWN_API, getJawnClient } from "../../lib/clients/jawn";
 import { Result } from "@/packages/common/result";
 import { FilterNode } from "@helicone-package/filters/filterDefs";
 import { placeAssetIdValues } from "../lib/requestTraverseHelper";
+import {
+  buildBodyQueryKey,
+  mergeRequestRowsWithBodies,
+  requestBodyIdentity,
+  type BodyQueryResult,
+} from "./requests/requestBodyIdentities";
+
 import { SortLeafRequest } from "../lib/sorts/requests/sorts";
 import { MAX_EXPORT_ROWS } from "@/lib/constants";
 import { TSessions } from "@/components/templates/sessions/sessionsPage";
@@ -52,6 +59,8 @@ interface RequestBodyContent {
 }
 
 const requestBodyCache = new Map<string, RequestBodyContent>();
+
+const EMPTY_REQUEST_ROWS: HeliconeRequest[] = [];
 
 export const useGetRequestWithBodies = (requestId: string) => {
   const org = useOrg();
@@ -122,29 +131,40 @@ export const useGetRequestsWithBodies = (
     },
   );
 
-  // Second query to fetch and process request bodies
+  // Second query to fetch and process request bodies. The key is built
+  // from compact, org-scoped body resource identities (request_id +
+  // signed body URL + asset URLs), never from the raw rows themselves,
+  // so payload size cannot affect the key.
+  const org = useOrg();
+  const rawRows = requestQuery.data?.data ?? EMPTY_REQUEST_ROWS;
+
+  // One snapshot per identity: the key and the rows it was built from.
+  // A key change re-fetches against exactly the rows that identity
+  // describes; a retry on an old key never pulls in new rows.
+  const bodyQuerySnapshot = useMemo(
+    () => ({
+      bodyQueryKey: buildBodyQueryKey(rawRows, org?.currentOrg?.id),
+      keyRows: rawRows,
+    }),
+    [rawRows, org?.currentOrg?.id],
+  );
+
   const { data: requests, isLoading: bodiesLoading } = useQuery<
-    HeliconeRequest[]
+    (BodyQueryResult | null)[]
   >({
-    queryKey: ["requestsWithSignedUrls", requestQuery.data?.data],
+    queryKey: bodyQuerySnapshot.bodyQueryKey,
     placeholderData: (prev) => prev,
-    enabled: !!requestQuery.data?.data?.length,
+    enabled: rawRows.length > 0,
+    gcTime: 0,
     queryFn: async () => {
+      const orgId = org?.currentOrg?.id;
       try {
         return await Promise.all(
-          requestQuery.data?.data?.map(async (request) => {
-            // Return from cache if available
-            if (requestBodyCache.has(request.request_id)) {
-              const bodyContent = requestBodyCache.get(request.request_id);
-              return {
-                ...request,
-                request_body: bodyContent?.request,
-                response_body: bodyContent?.response,
-              };
-            }
-
-            // Skip if no signed URL is available
-            if (!request.signed_body_url) return request;
+          bodyQuerySnapshot.keyRows.map(async (request) => {
+            const identity = requestBodyIdentity(request, orgId);
+            // No signed URL: nothing to fetch; the raw row's own fields
+            // stay as-is.
+            if (!request.signed_body_url) return null;
 
             try {
               const contentResponse = await fetch(request.signed_body_url);
@@ -153,7 +173,7 @@ export const useGetRequestsWithBodies = (
                   { status: contentResponse.status },
                   "Error fetching request body",
                 );
-                return request;
+                return null;
               }
 
               const text = await contentResponse.text();
@@ -163,22 +183,22 @@ export const useGetRequestsWithBodies = (
                 content = placeAssetIdValues(request.asset_urls, content);
               }
 
-              // Update cache with size limit protection
-              requestBodyCache.set(request.request_id, content);
-              if (requestBodyCache.size > 10_000) {
-                requestBodyCache.clear();
-              }
-
               return {
-                ...request,
+                resourceIdentity: {
+                  org: identity[0],
+                  request_id: identity[1],
+                  signed_body_url: identity[2],
+                  assets: identity[3],
+                },
+                request_id: identity[1],
                 request_body: content.request,
                 response_body: content.response,
               };
             } catch (error) {
               logger.error({ error }, "Error processing request body");
-              return request;
+              return null;
             }
-          }) ?? [],
+          }),
         );
       } catch (error) {
         logger.error({ error }, "Error processing requests with bodies");
@@ -187,18 +207,18 @@ export const useGetRequestsWithBodies = (
     },
   });
 
-  const mergedRequests = useMemo(() => {
-    const rawRequests = requestQuery.data?.data ?? [];
-    return rawRequests.map((rawRequest) => {
-      const requestWithBody = requests?.find(
-        (request) => request.request_id === rawRequest.request_id,
-      );
-      if (requestWithBody) {
-        return requestWithBody;
-      }
-      return rawRequest;
-    });
-  }, [requestQuery, requests]);
+  // O(n) join: latest raw rows carry metadata + order; a body result
+  // applies only when it matches the row's current identity. Rows
+  // without a matching result are returned by reference, untouched.
+  const mergedRequests = useMemo(
+    () =>
+      mergeRequestRowsWithBodies(
+        rawRows,
+        requests ?? [],
+        org?.currentOrg?.id,
+      ),
+    [rawRows, requests, org?.currentOrg?.id],
+  );
 
   return {
     isLoading: requestQuery.isLoading || bodiesLoading,

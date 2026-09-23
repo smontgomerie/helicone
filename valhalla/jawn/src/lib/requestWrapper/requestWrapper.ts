@@ -309,6 +309,10 @@ export class RequestWrapper {
     return this.request.body;
   }
 
+  getRawBody(): unknown {
+    return this.request.body;
+  }
+
   getHeaders(): Headers {
     return this.headers;
   }

@@ -1,7 +1,8 @@
 import { heliconeRequestToMappedContent } from "@helicone-package/llm-mapper/utils/getMappedContent";
+import { MappedLLMRequest } from "@helicone-package/llm-mapper/types";
 import { UIFilterRowTree } from "@helicone-package/filters/types";
 import { TimeFilter } from "@/types/timeFilter";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getTimeIntervalAgo } from "../../../lib/timeCalculations/time";
 import { useModels } from "../../../services/hooks/models";
 import { useGetPropertiesV2 } from "../../../services/hooks/propertiesV2";
@@ -17,6 +18,10 @@ import { filterUITreeToFilterNode } from "@helicone-package/filters/helpers";
 import { SortLeafRequest } from "../../../services/lib/sorts/requests/sorts";
 import { useFilterAST } from "@/filterAST/context/filterContext";
 import { toFilterNode } from "@helicone-package/filters/toFilterNode";
+
+// Stable empty fallback so the memoized mapping does not allocate a new
+// array each render when the page has no rows.
+const EMPTY_MAPPED_REQUESTS = [] as MappedLLMRequest[];
 
 const useRequestsPageV2 = (
   currentPage: number,
@@ -119,10 +124,19 @@ const useRequestsPageV2 = (
     isLive,
   );
 
+  // Map raw rows to mapped content only when the underlying data changes,
+  // instead of re-running the whole-page mapping on every render.
+  const mappedRequests = useMemo(
+    () =>
+      requests.requests?.map(heliconeRequestToMappedContent) ??
+      EMPTY_MAPPED_REQUESTS,
+    [requests.requests],
+  );
+
   const isDataLoading = requests.isLoading || isPropertiesLoading;
 
   return {
-    requests: requests.requests?.map(heliconeRequestToMappedContent) ?? [],
+    requests: mappedRequests,
     count: count.data?.data,
     isDataLoading,
     isBodyLoading: requests.isLoading,

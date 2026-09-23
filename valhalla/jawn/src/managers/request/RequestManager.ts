@@ -20,6 +20,7 @@ import {
   DEFAULT_UUID,
 } from "@helicone-package/llm-mapper/types";
 import { cacheResultCustom } from "../../utils/cacheResult";
+import { safeJsonParse } from "../../utils/helpers";
 import { BaseManager } from "../BaseManager";
 import { ScoreManager } from "../score/ScoreManager";
 import { AuthParams } from "../../packages/common/auth/types";
@@ -58,6 +59,7 @@ const kvCache = new KVCache(24 * 60 * 60 * 1000 - 1000); // 1 day - 1 second
 export class RequestManager extends BaseManager {
   private versionedRequestStore: VersionedRequestStore;
   private s3Client: S3Client;
+  private publicS3Client: S3Client;
   constructor(authParams: AuthParams) {
     super(authParams);
 
@@ -68,6 +70,13 @@ export class RequestManager extends BaseManager {
       process.env.S3_ACCESS_KEY || undefined,
       process.env.S3_SECRET_KEY || undefined,
       process.env.S3_ENDPOINT ?? "",
+      process.env.S3_BUCKET_NAME ?? "",
+      (process.env.S3_REGION as "us-west-2" | "eu-west-1") ?? "us-west-2"
+    );
+    this.publicS3Client = new S3Client(
+      process.env.S3_ACCESS_KEY || undefined,
+      process.env.S3_SECRET_KEY || undefined,
+      process.env.S3_ENDPOINT_PUBLIC || process.env.S3_ENDPOINT || "",
       process.env.S3_BUCKET_NAME ?? "",
       (process.env.S3_REGION as "us-west-2" | "eu-west-1") ?? "us-west-2"
     );
@@ -107,7 +116,7 @@ export class RequestManager extends BaseManager {
     ) {
       // Generate signed URL for request/response body
       const { data: signedBodyUrl, error: signedBodyUrlErr } =
-        await this.s3Client.getRequestResponseBodySignedUrl(
+        await this.publicS3Client.getRequestResponseBodySignedUrl(
           this.authParams.organizationId,
           heliconeRequest.cache_reference_id === DEFAULT_UUID
             ? heliconeRequest.request_id
@@ -130,7 +139,7 @@ export class RequestManager extends BaseManager {
           const signedUrlPromises = heliconeRequest.asset_ids.map(
             async (assetId: string) => {
               const { data: signedImageUrl, error: signedImageUrlErr } =
-                await this.s3Client.getRequestResponseImageSignedUrl(
+                await this.publicS3Client.getRequestResponseImageSignedUrl(
                   this.authParams.organizationId,
                   heliconeRequest.request_id,
                   assetId
@@ -186,17 +195,36 @@ export class RequestManager extends BaseManager {
       return err("Request body not found");
     }
     try {
-      const bodyResponse = await fetch(request.data.signed_body_url);
+      // Internal readers use the Docker/storage endpoint, not the browser URL.
+      const bodyRequestId =
+        request.data.cache_reference_id === DEFAULT_UUID
+          ? request.data.request_id
+          : (request.data.cache_reference_id ?? request.data.request_id);
+      const signedBody = await this.s3Client.getRequestResponseBodySignedUrl(
+        this.authParams.organizationId,
+        bodyRequestId
+      );
+      if (signedBody.error || !signedBody.data) {
+        return err(signedBody.error || "Request body not found");
+      }
+      const bodyResponse = await fetch(signedBody.data);
       if (!bodyResponse.ok) {
         console.error(
           `[RequestManager] Failed to fetch body: ${bodyResponse.status} ${bodyResponse.statusText}`
         );
         return err("Error fetching request body");
       }
-      const bodyData = await bodyResponse.json();
+      const bodyText = await bodyResponse.text();
+      // The body is stored as a JSON document. Parse it safely so that
+      // non-JSON payloads (e.g. multipart image edits) cannot 500 the
+      // endpoint; fall back to the raw text when it is not JSON.
+      const bodyData = safeJsonParse<{ request?: unknown; response?: unknown }>(
+        bodyText,
+        "request body"
+      );
       return ok({
         ...request.data,
-        request_body: bodyData?.["request"],
+        request_body: bodyData?.["request"] ?? bodyText,
         response_body: bodyData?.["response"],
       });
     } catch (e) {
@@ -607,7 +635,7 @@ export class RequestManager extends BaseManager {
     if (assetError || !assetData) {
       return err(`${assetError}`);
     }
-    const assetUrl = await this.s3Client.getRequestResponseImageSignedUrl(
+    const assetUrl = await this.publicS3Client.getRequestResponseImageSignedUrl(
       this.authParams.organizationId,
       requestId,
       assetData.id

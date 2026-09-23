@@ -7,6 +7,9 @@ export interface CallProps {
   method: string;
   apiBase: string;
   body: string | null;
+  // Original binary request body, forwarded verbatim to avoid the UTF-8
+  // re-encoding a string body would go through in node-fetch.
+  rawBody?: Buffer;
   increaseTimeout: boolean;
   originalUrl: URL;
 }
@@ -17,6 +20,7 @@ export function callPropsFromProxyRequest(
   return {
     apiBase: proxyRequest.api_base,
     body: proxyRequest.bodyText,
+    rawBody: proxyRequest.rawBody,
     headers: proxyRequest.requestWrapper.getHeaders(),
     method: proxyRequest.requestWrapper.getMethod(),
     increaseTimeout:
@@ -46,11 +50,20 @@ export async function callProvider(props: CallProps) {
 
   const finalHeaders = removeHeliconeHeaders(headers);
   const baseInit = { method, headers: finalHeaders };
-  const init =
-    method === "GET" ? { ...baseInit } : { ...baseInit, body: body ?? "" };
+  // Keep a single init object (string body by default); the rawBuffer
+  // branch below replaces it with the original binary bytes.
+  const init: { method: string; headers: Headers; body?: string | Buffer } =
+    method === "GET"
+      ? { ...baseInit }
+      : { ...baseInit, body: body ?? "" };
   init.headers.delete("host");
   init.headers.delete("Content-Encoding");
 
+  if (method !== "GET" && props.rawBody) {
+    // Send the raw Buffer so binary bytes (image uploads) are not re-encoded
+    // as UTF-8.
+    init.body = props.rawBody;
+  }
   const result = await fetch(targetUrl.href, init);
   result.headers.delete("Content-Encoding");
   return result;

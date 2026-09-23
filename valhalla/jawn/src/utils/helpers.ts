@@ -27,14 +27,35 @@ export function safeJsonParse<T>(text: string, errorMsg?: string): T | null {
 }
 
 /**
- * @deprecated Use safeJsonParse<T> instead for type safety and better error handling
+ * Bounded JSON parse-failure diagnostic: never embeds the raw input or the
+ * exception message; keeps the (length-capped) context label and, for large
+ * inputs, the input length.
+ */
+export function tryParseDiagnostic(
+  text: string,
+  errorMsg?: string,
+): string {
+  const context = (errorMsg ?? "input").slice(0, 100);
+  const maxLength = 1_000;
+  let detail = "";
+  if (typeof text === "string" && text.length > maxLength) {
+    detail = ` (input length ${text.length})`;
+  }
+  return `Error parsing ${context}: invalid JSON${detail}`;
+}
+
+/**
+ * @deprecated Use safeJsonParse<T> instead for type safety and better error handling.
+ *
+ * On success the parsed value is returned unchanged. On failure a
+ * `{ error: string }` object with a bounded diagnostic is returned.
  */
 export function tryParse(text: string, errorMsg?: string): any {
   try {
     return JSON.parse(text);
-  } catch (e) {
+  } catch {
     return {
-      error: `Error parsing ${errorMsg}, ${e}, ${text}`,
+      error: tryParseDiagnostic(text, errorMsg),
     };
   }
 }
