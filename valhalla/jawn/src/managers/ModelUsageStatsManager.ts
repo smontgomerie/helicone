@@ -1,6 +1,9 @@
 import { Result, ok, err } from "../packages/common/result";
 import { clickhouseDb } from "../lib/db/ClickhouseWrapper";
-import { StatsTimeFrame } from "../controllers/public/statsController";
+// StatsTimeFrame lived in the public stats controller, which was removed in
+// f92933226 (security: unauthenticated SQL endpoints); this manager is now the
+// only consumer, so the type is defined locally (values match TIME_CONFIG).
+export type StatsTimeFrame = "24h" | "7d" | "30d" | "3m" | "1y";
 import { registry } from "@helicone-package/cost/models/registry";
 
 interface ModelTokens {

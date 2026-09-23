@@ -15,8 +15,13 @@ import { models as gpt5Models } from "./gpt-5/models";
 import { models as gpt51Models } from "./gpt-5.1/models";
 import { models as gpt52Models } from "./gpt-5.2/models";
 import { models as gpt54Models } from "./gpt-5.4/models";
+
 import { models as gpt54MiniModels } from "./gpt-5.4-mini/models";
 import { models as gpt55Models } from "./gpt-5.5/models";
+import { models as gpt6AstraModels } from "./gpt-6-astra/models";
+import { models as gpt6SolModels } from "./gpt-6-sol/models";
+import { models as gpt6LunaModels } from "./gpt-6-luna/models";
+
 import { models as ossModels } from "./oss/models";
 import { models as gptImage1Models } from "./gpt-image-1/models";
 import { models as gptImage2Models } from "./gpt-image-2/models";
@@ -32,8 +37,13 @@ import { endpoints as gpt5Endpoints } from "./gpt-5/endpoints";
 import { endpoints as gpt51Endpoints } from "./gpt-5.1/endpoints";
 import { endpoints as gpt52Endpoints } from "./gpt-5.2/endpoints";
 import { endpoints as gpt54Endpoints } from "./gpt-5.4/endpoints";
+
 import { endpoints as gpt54MiniEndpoints } from "./gpt-5.4-mini/endpoints";
 import { endpoints as gpt55Endpoints } from "./gpt-5.5/endpoints";
+import { endpoints as gpt6AstraEndpoints } from "./gpt-6-astra/endpoints";
+import { endpoints as gpt6SolEndpoints } from "./gpt-6-sol/endpoints";
+import { endpoints as gpt6LunaEndpoints } from "./gpt-6-luna/endpoints";
+
 import { endpoints as ossEndpoints } from "./oss/endpoints";
 import { endpoints as gptImage1Endpoints } from "./gpt-image-1/endpoints";
 import { endpoints as gptImage2Endpoints } from "./gpt-image-2/endpoints";
@@ -50,8 +60,13 @@ export const openaiModels = {
   ...gpt51Models,
   ...gpt52Models,
   ...gpt54Models,
+
   ...gpt54MiniModels,
   ...gpt55Models,
+  ...gpt6AstraModels,
+  ...gpt6SolModels,
+  ...gpt6LunaModels,
+
   ...ossModels,
   ...gptImage1Models,
   ...gptImage2Models,
@@ -69,8 +84,13 @@ export const openaiEndpointConfig = {
   ...gpt51Endpoints,
   ...gpt52Endpoints,
   ...gpt54Endpoints,
+
   ...gpt54MiniEndpoints,
   ...gpt55Endpoints,
+  ...gpt6AstraEndpoints,
+  ...gpt6SolEndpoints,
+  ...gpt6LunaEndpoints,
+
   ...ossEndpoints,
   ...gptImage1Endpoints,
   ...gptImage2Endpoints,
