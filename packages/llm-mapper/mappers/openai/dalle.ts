@@ -1,5 +1,6 @@
 import { LlmSchema } from "../../types";
 import { MapperFn } from "../types";
+import { parseImageEditMultipartFields } from "./imageEditMultipart";
 
 interface DalleRequestBody {
   model: string;
@@ -32,6 +33,14 @@ export const mapDalleRequest: MapperFn<DalleRequestBody, any> = ({
   statusCode = 200,
   model,
 }) => {
+  // Older image edits stored the multipart form inside a parse diagnostic.
+  // Recover its text fields so those requests can still show their prompt.
+  const formFields =
+    typeof (request as any)?.error === "string"
+      ? parseImageEditMultipartFields((request as any).error)
+      : null;
+  const imageRequest = formFields ? { ...request, ...formFields } : request;
+
   // Format the image URL properly - add data URL prefix for base64 images
   const rawImageData =
     response?.data?.[0]?.b64_json || response?.data?.[0]?.url || "";
@@ -43,22 +52,22 @@ export const mapDalleRequest: MapperFn<DalleRequestBody, any> = ({
 
   const llmSchema: LlmSchema = {
     request: {
-      model: request.model,
-      prompt: request.prompt,
-      size: request.size,
-      quality: request.quality,
-      response_format: request.response_format
+      model: imageRequest.model,
+      prompt: imageRequest.prompt,
+      size: imageRequest.size,
+      quality: imageRequest.quality,
+      response_format: imageRequest.response_format
         ? {
-            type: request.response_format,
+            type: imageRequest.response_format,
             json_schema: {},
           }
         : undefined,
       // Add messages array for proper UI rendering
-      messages: request.prompt
+      messages: imageRequest.prompt
         ? [
             {
               role: "user",
-              content: request.prompt,
+              content: imageRequest.prompt,
               _type: "message",
             },
           ]
@@ -80,11 +89,11 @@ export const mapDalleRequest: MapperFn<DalleRequestBody, any> = ({
   return {
     schema: llmSchema,
     preview: {
-      request: getRequestText(request),
+      request: getRequestText(imageRequest),
       response: getResponseText(response, statusCode),
       concatenatedMessages: [
         {
-          content: request.prompt || "",
+          content: imageRequest.prompt || "",
           role: "user",
           _type: "message",
         },

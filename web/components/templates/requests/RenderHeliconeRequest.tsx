@@ -83,7 +83,8 @@ export function RenderMappedRequest({
 
   // Check if bodies were not stored due to free tier limit
   const bodiesNotStored =
-    mappedRequest.heliconeMetadata.storageLocation === "not_stored_exceeded_free";
+    mappedRequest.heliconeMetadata.storageLocation ===
+    "not_stored_exceeded_free";
 
   // Check if request had an error first
   const hasError =
@@ -152,7 +153,11 @@ export function RenderMappedRequest({
       ) : mode === "json" ? (
         <Json mapperContent={mappedRequest} />
       ) : mode === "chat" ? (
-        <ChatOnlyView mappedRequest={mappedRequest} />
+        mappedRequest._type === "openai-image" ? (
+          <Chat mappedRequest={mappedRequest} />
+        ) : (
+          <ChatOnlyView mappedRequest={mappedRequest} />
+        )
       ) : hasError ? (
         <>
           <ErrorMessage mapperContent={mappedRequest} className="p-4" />

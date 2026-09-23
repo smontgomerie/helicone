@@ -3,10 +3,9 @@
  *
  * The body query key never embeds raw rows: TanStack hashes the key by
  * content, and rows can carry large stored bodies. Instead the key is built
- * from body *resource* identities (org + request_id + signed body URL +
- * asset URLs), so a refreshed URL or asset set changes the key and
- * invalidates stale bodies, while a metadata-only main-query update keeps
- * the key stable.
+ * from body resource identities (org + request_id + body object URL without
+ * signing parameters + asset URLs). A signature refresh must not restart a
+ * large body download during live polling.
  *
  * Identities are structured tuples (sorted [key, value] asset pairs, no
  * payload data), so no valid URL/asset string can collide with another
@@ -19,6 +18,28 @@ export interface RequestBodyIdentityRow {
   request_id: string;
   signed_body_url?: string | null;
   asset_urls?: Record<string, string> | null;
+  storage_location?: string | null;
+  size_bytes?: number | null;
+}
+
+const MAX_EAGER_BODY_BYTES = 2 * 1024 * 1024;
+
+/** Large S3 bodies are loaded by the request drawer, not every list refresh. */
+export function deferRequestBody(row: RequestBodyIdentityRow): boolean {
+  return (
+    row.storage_location === "s3" &&
+    (row.size_bytes == null || row.size_bytes > MAX_EAGER_BODY_BYTES)
+  );
+}
+
+function bodyObjectUrl(signedUrl: string): string {
+  if (!signedUrl) return "";
+  try {
+    const url = new URL(signedUrl);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return signedUrl;
+  }
 }
 
 /** Stable prefix for the requests body query. */
@@ -45,7 +66,7 @@ export type RequestBodyIdentityTuple = [
 
 /**
  * Identity of one row's body resources:
- * [org, request_id, signed_body_url ?? "", sorted [key, value] asset pairs].
+ * [org, request_id, body object URL, sorted [key, value] asset pairs].
  * Asset pairs are sorted so object key order never affects the identity.
  */
 export function requestBodyIdentity(
@@ -61,7 +82,7 @@ export function requestBodyIdentity(
   return [
     orgId ?? "",
     row.request_id,
-    row.signed_body_url ?? "",
+    bodyObjectUrl(row.signed_body_url ?? ""),
     assets,
   ];
 }
@@ -84,7 +105,7 @@ export function resourceIdentityKey(
   return JSON.stringify([
     identity.org,
     identity.request_id,
-    identity.signed_body_url,
+    bodyObjectUrl(identity.signed_body_url),
     [...identity.assets].sort((a, b) =>
       a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0,
     ),
@@ -108,8 +129,7 @@ export function buildBodyQueryKey(
 
 /**
  * One successful body-fetch result, tagged with the resource identity it
- * was fetched for, so a stale fetch (refreshed URL, moved org) can be
- * dropped at merge time.
+ * was fetched for, so a result for another object or org is dropped at merge.
  */
 export interface BodyQueryResult {
   resourceIdentity: RequestBodyResourceIdentity;
@@ -132,8 +152,8 @@ export interface MergeableRequestRow {
  * Join the latest raw rows (metadata + order) with successful body results.
  *
  * A result applies only when it matches the row's *current* full identity
- * (org + request_id + signed body URL + asset set); a stale result from a
- * refreshed URL or a different org is ignored. Unmatched rows are returned
+ * (org + request_id + body object URL + asset set); a result for another
+ * object or org is ignored. Unmatched rows are returned
  * by reference, untouched, so their raw fields (which can already hold
  * stored bodies) are preserved. Lookup is O(rows + results) via a Map
  * keyed on org + request_id.

@@ -97,6 +97,17 @@ export const getMapperType = ({
     return "vercel-chat";
   }
 
+  // Image edits can have no model in their logged metadata (multipart fields
+  // were historically not parsed), so classify by endpoint first.
+  if (
+    provider === "OPENAI" &&
+    /\/images\/(?:edits|generations|variations)(?:[/?]|$)/.test(
+      targetUrl ?? path ?? "",
+    )
+  ) {
+    return "openai-image";
+  }
+
   if (!model) {
     return "openai-chat";
   }

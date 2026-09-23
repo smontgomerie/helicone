@@ -1,5 +1,6 @@
 import {
   buildBodyQueryKey,
+  deferRequestBody,
   mergeRequestRowsWithBodies,
   REQUESTS_WITH_BODIES_QUERY_NAME,
   requestBodyIdentity,
@@ -47,12 +48,12 @@ function makeResult(
 }
 
 describe("requestBodyIdentity", () => {
-  it("returns a structured [org, request_id, url, asset pairs] tuple", () => {
+  it("returns a structured [org, request_id, body object URL, asset pairs] tuple", () => {
     const identity = requestBodyIdentity(makeRow(), "org-A");
     expect(identity).toEqual([
       "org-A",
       "req-1",
-      "https://storage.example/signed/req-1?sig=abc",
+      "https://storage.example/signed/req-1",
       [["asset-1", "https://storage.example/asset-1"]],
     ]);
     // No delimiter-joined string form: it is a plain array, not a string.
@@ -80,14 +81,28 @@ describe("requestBodyIdentity", () => {
     );
   });
 
-  it("invalidates when the signed URL refreshes", () => {
+  it("keeps the same identity when only signing parameters refresh", () => {
     const base = makeRow();
     const refreshed: any = {
       ...base,
       signed_body_url: "https://storage.example/signed/req-1?sig=refreshed",
     };
-    expect(requestBodyIdentity(base, "org-A")).not.toEqual(
+    expect(requestBodyIdentity(base, "org-A")).toEqual(
       requestBodyIdentity(refreshed, "org-A"),
+    );
+    expect(buildBodyQueryKey([base], "org-A")).toEqual(
+      buildBodyQueryKey([refreshed], "org-A"),
+    );
+  });
+
+  it("invalidates if the public storage endpoint changes", () => {
+    expect(requestBodyIdentity(makeRow(), "org-A")).not.toEqual(
+      requestBodyIdentity(
+        makeRow({
+          signed_body_url: "https://new-storage.example/signed/req-1?sig=abc",
+        }),
+        "org-A",
+      ),
     );
   });
 
@@ -159,11 +174,17 @@ describe("identity key helpers", () => {
       org: "org-A",
       request_id: "req-1",
       signed_body_url: "https://x",
-      assets: [["b", "2"], ["a", "1"]],
+      assets: [
+        ["b", "2"],
+        ["a", "1"],
+      ],
     };
     const reversed: BodyQueryResult["resourceIdentity"] = {
       ...base,
-      assets: [["a", "1"], ["b", "2"]],
+      assets: [
+        ["a", "1"],
+        ["b", "2"],
+      ],
     };
     expect(resourceIdentityKey(base)).toBe(resourceIdentityKey(reversed));
   });
@@ -171,7 +192,7 @@ describe("identity key helpers", () => {
   it("keys differ when any resource field differs", () => {
     const a = requestBodyIdentity(makeRow(), "org-A");
     const b = requestBodyIdentity(
-      makeRow({ signed_body_url: "https://x?sig=other" }),
+      makeRow({ signed_body_url: "https://x/other?sig=abc" }),
       "org-A",
     );
     const c = requestBodyIdentity(makeRow(), "org-B");
@@ -208,9 +229,7 @@ describe("buildBodyQueryKey", () => {
     expect(key[1]).toEqual("org-A");
     expect(key.length).toEqual(3);
     // key[2] is the row's structured identity tuple, not a payload
-    expect(key[2]).toEqual(
-      requestBodyIdentity(makeRow(), "org-A"),
-    );
+    expect(key[2]).toEqual(requestBodyIdentity(makeRow(), "org-A"));
   });
 
   it("returns a stable key for empty/absent rows", () => {
@@ -283,7 +302,7 @@ describe("mergeRequestRowsWithBodies", () => {
     expect(merged[0].request_body).toBe("stored-body");
   });
 
-  it("a result for a stale identity is ignored; the raw row is kept by reference", () => {
+  it("a result fetched with an older signature still applies to the same object", () => {
     const currentRow = makeRow({
       signed_body_url: "https://storage.example/signed/req-1?sig=refreshed",
     });
@@ -292,8 +311,19 @@ describe("mergeRequestRowsWithBodies", () => {
     const staleRow = makeRow(); // sig=abc
     const results = [makeResult("org-A", staleRow, "old-body")];
     const merged = mergeRequestRowsWithBodies(rawRows, results, "org-A");
+    expect(merged[0].request_body).toBe("old-body");
+  });
+
+  it("ignores a result for a different body object", () => {
+    const rawRows: TestRow[] = [
+      makeRow({ signed_body_url: "https://storage.example/other" }),
+    ];
+    const merged = mergeRequestRowsWithBodies(
+      rawRows,
+      [makeResult("org-A", makeRow(), "old-body")],
+      "org-A",
+    );
     expect(merged[0]).toBe(rawRows[0]);
-    expect(merged[0].request_body).toBeUndefined();
   });
 
   it("a result from a different org is ignored for this org's rows", () => {
@@ -319,12 +349,34 @@ describe("mergeRequestRowsWithBodies", () => {
     expect(mergeRequestRowsWithBodies(rawRows, undefined, "org-A")).toEqual(
       rawRows,
     );
-    expect(
-      mergeRequestRowsWithBodies(rawRows, undefined, "org-A")[0],
-    ).toBe(rawRows[0]);
+    expect(mergeRequestRowsWithBodies(rawRows, undefined, "org-A")[0]).toBe(
+      rawRows[0],
+    );
     expect(mergeRequestRowsWithBodies(rawRows, null, "org-A")[0]).toBe(
       rawRows[0],
     );
     expect(mergeRequestRowsWithBodies([], null, "org-A")).toEqual([]);
+  });
+});
+
+describe("deferRequestBody", () => {
+  it("defers large or unknown-size S3 bodies in the list", () => {
+    expect(
+      deferRequestBody(
+        makeRow({ storage_location: "s3", size_bytes: 43_000_000 }),
+      ),
+    ).toBe(true);
+    expect(deferRequestBody(makeRow({ storage_location: "s3" }))).toBe(true);
+  });
+
+  it("keeps small S3 bodies and inline ClickHouse bodies eager", () => {
+    expect(
+      deferRequestBody(makeRow({ storage_location: "s3", size_bytes: 1000 })),
+    ).toBe(false);
+    expect(
+      deferRequestBody(
+        makeRow({ storage_location: "clickhouse", size_bytes: 43_000_000 }),
+      ),
+    ).toBe(false);
   });
 });

@@ -151,7 +151,9 @@ export default function RequestsPage(props: RequestsPageV2Props) {
   );
   const [isLive, setIsLive] = useLocalStorage("isLive-RequestPage", false);
   const { unauthorized, currentTier } = useGetUnauthorized(userId || "");
-  const initialRequest = useGetRequestWithBodies(initialRequestId || "");
+  const detailRequestId =
+    selectedData?.heliconeMetadata.requestId ?? initialRequestId ?? "";
+  const initialRequest = useGetRequestWithBodies(detailRequestId);
 
   const cacheFilter: FilterNode = isCached
     ? {
@@ -706,9 +708,13 @@ export default function RequestsPage(props: RequestsPageV2Props) {
     }
   }, [filterMap, getAdvancedFilters, isDataLoading, userId]);
 
-  // Load and display initial request data in drawer
+  // Fill the selected drawer from its detail query, including S3 bodies that
+  // are deliberately not downloaded for every row of the requests list.
   useEffect(() => {
-    if (initialRequest.data?.data && !selectedData) {
+    if (
+      initialRequest.data?.data &&
+      initialRequest.data.data.request_id === detailRequestId
+    ) {
       setSelectedData(
         heliconeRequestToMappedContent(
           initialRequest.data.data as HeliconeRequest,
@@ -717,7 +723,7 @@ export default function RequestsPage(props: RequestsPageV2Props) {
       drawerRef.current?.expand(); // Expand the drawer
       drawerRef.current?.resize(drawerSize);
     }
-  }, [initialRequest, selectedData, drawerSize]);
+  }, [initialRequest.data?.data, detailRequestId, drawerSize]);
 
   return shouldShowMockData === undefined ? null : shouldShowMockData ===
     false ? (

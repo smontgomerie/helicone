@@ -395,4 +395,5 @@ export interface HeliconeRequest {
   request_referrer?: string | null;
   ai_gateway_body_mapping: string | null;
   storage_location?: string;
+  size_bytes?: number | null;
 }

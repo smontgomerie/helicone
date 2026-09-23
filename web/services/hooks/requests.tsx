@@ -8,6 +8,7 @@ import { FilterNode } from "@helicone-package/filters/filterDefs";
 import { placeAssetIdValues } from "../lib/requestTraverseHelper";
 import {
   buildBodyQueryKey,
+  deferRequestBody,
   mergeRequestRowsWithBodies,
   requestBodyIdentity,
   type BodyQueryResult,
@@ -59,6 +60,8 @@ interface RequestBodyContent {
 }
 
 const requestBodyCache = new Map<string, RequestBodyContent>();
+const MAX_CACHED_BODY_TEXT = 1 * 1024 * 1024;
+const DEFERRED_BODY_MESSAGE = "Large body stored in S3. Open request to view.";
 
 const EMPTY_REQUEST_ROWS: HeliconeRequest[] = [];
 
@@ -88,9 +91,11 @@ export const useGetRequestWithBodies = (requestId: string) => {
               content,
             );
           }
-          requestBodyCache.set(response.data?.data?.request_id, content);
-          if (requestBodyCache.size > 1000) {
-            requestBodyCache.clear();
+          if (text.length <= MAX_CACHED_BODY_TEXT) {
+            requestBodyCache.set(response.data.data.request_id, content);
+            if (requestBodyCache.size > 1000) {
+              requestBodyCache.clear();
+            }
           }
           response.data.data.response_body = content.response;
           response.data.data.request_body = content.request;
@@ -133,7 +138,7 @@ export const useGetRequestsWithBodies = (
 
   // Second query to fetch and process request bodies. The key is built
   // from compact, org-scoped body resource identities (request_id +
-  // signed body URL + asset URLs), never from the raw rows themselves,
+  // body object URL + asset URLs), never from the raw rows themselves,
   // so payload size cannot affect the key.
   const org = useOrg();
   const rawRows = requestQuery.data?.data ?? EMPTY_REQUEST_ROWS;
@@ -164,7 +169,8 @@ export const useGetRequestsWithBodies = (
             const identity = requestBodyIdentity(request, orgId);
             // No signed URL: nothing to fetch; the raw row's own fields
             // stay as-is.
-            if (!request.signed_body_url) return null;
+            if (!request.signed_body_url || deferRequestBody(request))
+              return null;
 
             try {
               const contentResponse = await fetch(request.signed_body_url);
@@ -216,6 +222,18 @@ export const useGetRequestsWithBodies = (
         rawRows,
         requests ?? [],
         org?.currentOrg?.id,
+      ).map((row) =>
+        deferRequestBody(row)
+          ? {
+              ...row,
+              request_body: {
+                heliconeMessage: DEFERRED_BODY_MESSAGE,
+              },
+              response_body: {
+                choices: [{ message: { content: DEFERRED_BODY_MESSAGE } }],
+              },
+            }
+          : row,
       ),
     [rawRows, requests, org?.currentOrg?.id],
   );

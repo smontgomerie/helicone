@@ -194,9 +194,9 @@ const ImageContent: React.FC<{
 
   let imageSrc = message.image_url;
 
-  if (message.content && message.mime_type?.startsWith("image/")) {
+  if (!imageSrc && message.content && message.mime_type?.startsWith("image/")) {
     imageSrc = `data:${message.mime_type};base64,${message.content}`;
-  } else if (message.content && !message.mime_type) {
+  } else if (!imageSrc && message.content && !message.mime_type) {
     logger.warn(
       {
         message,

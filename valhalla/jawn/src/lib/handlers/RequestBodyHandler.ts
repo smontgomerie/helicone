@@ -1,4 +1,5 @@
 import { PromiseGenericResult, err } from "../../packages/common/result";
+import { parseImageEditMultipartFields } from "@helicone-package/llm-mapper/mappers/openai/imageEditMultipart";
 import { tryParse } from "../../utils/helpers";
 import { getModelFromRequest } from "../../utils/modelMapper";
 import { AbstractLogHandler } from "./AbstractLogHandler";
@@ -111,7 +112,15 @@ export class RequestBodyHandler extends AbstractLogHandler {
       };
     }
 
-    let parsedRequestBody = tryParse(rawRequestBody, "request body");
+    // Image edits use multipart/form-data. Keep their text fields as a small
+    // structured request instead of storing a JSON parse diagnostic.
+    const imageEditFields = /\/images\/edits(?:[/?]|$)/.test(
+      log.request.targetUrl || log.request.path
+    )
+      ? parseImageEditMultipartFields(rawRequestBody)
+      : null;
+    let parsedRequestBody =
+      imageEditFields ?? tryParse(rawRequestBody, "request body");
 
     const requestModel = getModelFromRequest(
       parsedRequestBody,
