@@ -22,7 +22,7 @@ import { dbExecute, dbQueryClickhouse } from "../../lib/shared/db/dbExecute";
 import { buildFilterWithAuthClickHouse } from "@helicone-package/filters/filters";
 import { getHeliconeAuthClient } from "../../packages/common/auth/server/AuthClientFactory";
 import { AuthParams } from "../../packages/common/auth/types";
-import { Result, err, ok } from "../../packages/common/result";
+import { Result, err, isError, ok } from "../../packages/common/result";
 import { costOf } from "@helicone-package/cost";
 import { BaseManager } from "../BaseManager";
 import { SecretManager } from "@helicone-package/secrets/SecretManager";
@@ -151,7 +151,7 @@ export class StripeManager extends BaseManager {
   ): Promise<Result<string, string>> {
     try {
       const stripeResult = this.getStripeClient();
-      if (stripeResult.error) {
+      if (isError(stripeResult)) {
         return err(stripeResult.error);
       }
 
@@ -216,6 +216,9 @@ export class StripeManager extends BaseManager {
     requests: number,
     storageBytes: number
   ): Promise<Result<{ requestsEvent: string; storageEvent: string }, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const events: StripeMeterEvent[] = [];
       const uniqueId = Date.now();
@@ -332,6 +335,9 @@ export class StripeManager extends BaseManager {
   }
 
   private async getOrCreateStripeCustomer(): Promise<Result<string, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       // Try to get the organization's stripe customer ID
       const orgResult = await dbExecute<{ stripe_customer_id: string }>(
@@ -428,6 +434,9 @@ WHERE (${builtFilter.filter})`,
   }
 
   public async downgradeToFree(): Promise<Result<null, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const subscriptionResult = await this.getSubscription();
       if (!subscriptionResult.data) {
@@ -450,6 +459,9 @@ WHERE (${builtFilter.filter})`,
   }
 
   public async undoCancelSubscription(): Promise<Result<null, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const subscriptionResult = await this.getSubscription();
       if (!subscriptionResult.data) {
@@ -497,6 +509,9 @@ WHERE (${builtFilter.filter})`,
   public async manageSubscriptionPaymentLink(
     origin: string
   ): Promise<Result<string, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const customerIdResult = await this.getOrCreateStripeCustomer();
       if (customerIdResult.error || !customerIdResult.data) {
@@ -527,6 +542,9 @@ WHERE (${builtFilter.filter})`,
   private async shouldApplyWaterlooCoupon(
     customerId: string
   ): Promise<boolean> {
+    if (!this.stripe) {
+      return false;
+    }
     try {
       const customer = await this.stripe.customers.retrieve(customerId);
       if (
@@ -548,6 +566,9 @@ WHERE (${builtFilter.filter})`,
     customerId: string,
     body: UpgradeToProRequest
   ): Promise<Result<Stripe.Checkout.Session, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     const proProductPrices = await getProProductPrices();
 
     // New pricing (2025-12-10): $79/mo flat, prompts included, unlimited seats
@@ -665,6 +686,9 @@ WHERE (${builtFilter.filter})`,
     isNewCustomer: boolean,
     uiMode: "embedded" | "hosted"
   ): Promise<Result<Stripe.Checkout.Session, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     // New pricing (2025-12-10): $799/mo flat, prompts/experiments/evals included
     // Plus metered billing for requests and GB usage
     const settingsManager = new SettingsManager();
@@ -968,6 +992,9 @@ WHERE (${builtFilter.filter})`,
       string
     >
   > {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     const subscriptionResult = await this.getSubscription();
     if (!subscriptionResult.data) {
       return err("No existing subscription found");
@@ -1003,6 +1030,9 @@ WHERE (${builtFilter.filter})`,
   private async addProductToStripe(
     productType: "alerts" | "prompts" | "experiments" | "evals"
   ): Promise<Result<null, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     const proProductPrices = await getProProductPrices();
     try {
       const subscriptionResult = await this.getSubscription();
@@ -1114,6 +1144,9 @@ WHERE (${builtFilter.filter})`,
   private async deleteProductFromStripe(
     productType: "alerts" | "prompts" | "experiments" | "evals"
   ): Promise<Result<null, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     const proProductPrices = await getProProductPrices();
     try {
       const subscriptionResult = await this.getSubscription();
@@ -1214,6 +1247,9 @@ WHERE (${builtFilter.filter})`,
 
   // Takes the existing subscription and adds any missing products
   public async migrateToPro(): Promise<Result<null, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     const proProductPrices = await getProProductPrices();
     try {
       const subscriptionResult = await this.getSubscription();
@@ -1290,6 +1326,9 @@ WHERE (${builtFilter.filter})`,
   ): Promise<
     Result<{ previousTier: string; newTier: string; subscriptionId: string }, string>
   > {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     const validTiers =
       tierType === "pro"
         ? ["pro-20240913", "pro-20250202", "growth", "pro-20251210"]
@@ -1437,7 +1476,7 @@ WHERE (${builtFilter.filter})`,
   public async getSubscription(): Promise<Result<Stripe.Subscription, string>> {
     try {
       const stripeResult = this.getStripeClient();
-      if (stripeResult.error) {
+      if (isError(stripeResult)) {
         return err(stripeResult.error);
       }
 
@@ -1469,6 +1508,9 @@ WHERE (${builtFilter.filter})`,
     amount: number,
     returnUrl?: string
   ): Promise<Result<string, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const customerId = await this.getOrCreateStripeCustomer();
       if (customerId.error || !customerId.data) {
@@ -1565,6 +1607,9 @@ WHERE (${builtFilter.filter})`,
   public async updateProUserCount(
     count: number
   ): Promise<Result<null, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     const proProductPrices = await getProProductPrices();
     try {
       const subscriptionResult = await this.getSubscription();
@@ -1632,6 +1677,9 @@ WHERE (${builtFilter.filter})`,
     limit: number = 10,
     page?: string
   ): Promise<Result<StripePaymentIntentsResponse, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       let query: string;
 
@@ -1804,6 +1852,9 @@ WHERE (${builtFilter.filter})`,
   async updateAutoTopoffSettings(
     settings: UpdateAutoTopoffSettingsRequest
   ): Promise<Result<AutoTopoffSettings, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const org = await this.getOrganization();
       if (org.error || !org.data) {
@@ -1900,6 +1951,9 @@ WHERE (${builtFilter.filter})`,
   }
 
   async getPaymentMethods(): Promise<Result<PaymentMethod[], string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const org = await this.getOrganization();
       if (org.error || !org.data) {
@@ -1933,6 +1987,9 @@ WHERE (${builtFilter.filter})`,
     origin: string,
     returnUrl?: string
   ): Promise<Result<string, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const customerIdResult = await this.getOrCreateStripeCustomer();
 
@@ -1971,6 +2028,9 @@ WHERE (${builtFilter.filter})`,
   async removePaymentMethod(
     paymentMethodId: string
   ): Promise<Result<void, string>> {
+    if (!this.stripe) {
+      return err("Stripe is not configured");
+    }
     try {
       const org = await this.getOrganization();
       if (org.error || !org.data) {
